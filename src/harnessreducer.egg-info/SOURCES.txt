@@ -4,11 +4,15 @@ src/harnessreducer/__init__.py
 src/harnessreducer/__main__.py
 src/harnessreducer/api.py
 src/harnessreducer/cli.py
+src/harnessreducer/fdp_transform.py
 src/harnessreducer/main.py
+src/harnessreducer/reducer_runner.py
 src/harnessreducer.egg-info/PKG-INFO
 src/harnessreducer.egg-info/SOURCES.txt
 src/harnessreducer.egg-info/dependency_links.txt
 src/harnessreducer.egg-info/entry_points.txt
 src/harnessreducer.egg-info/requires.txt
 src/harnessreducer.egg-info/top_level.txt
+tests/test_api_pipeline.py
 tests/test_fdp_complex_example.py
+tests/test_reducer_runner.py
