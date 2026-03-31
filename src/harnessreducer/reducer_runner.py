@@ -35,6 +35,8 @@ LEAK_PATTERN = re.compile(
 UBSAN_PATTERN = re.compile(
     r"runtime error:\s.*"
 )
+ASSERTION_PATTERN = re.compile(r"Assertion `.*' failed\.")
+LIBFUZZER_PATTERN = re.compile(r"SUMMARY: libFuzzer: deadly signal")
 
 def get_project_root() -> Path:
     return PROJECT_ROOT
@@ -136,6 +138,14 @@ def extract_crash_pattern_from_output(crash_input: str | None) -> str | None:
     ubsan_match = UBSAN_PATTERN.search(output)
     if ubsan_match:
         return ubsan_match.group(0)
+
+    assertion_match = ASSERTION_PATTERN.search(output)
+    if assertion_match:
+        return assertion_match.group(0)
+
+    libfuzzer_match = LIBFUZZER_PATTERN.search(output)
+    if libfuzzer_match:
+        return libfuzzer_match.group(0)
 
     raise ValueError("Failed to extract a valid crash pattern from the harness output. Output:\n" + output)
 

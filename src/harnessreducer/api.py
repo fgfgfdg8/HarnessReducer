@@ -35,6 +35,7 @@ class ReductionConfig:
     harness_path: str
     extra_flags: str | None = None
     crash_input: str | None = None
+    crash_pattern: str | None = None
     work_dir: str | None = None
     start_id: int = 100000
     marker: str = "FDP_ID"
@@ -115,7 +116,9 @@ def reduce_with_config(config: ReductionConfig) -> ReductionResult:
     configure_work_dir(config.work_dir)
     check_tree_reducer()
     check_harness_compilation(config.harness_path, config.extra_flags)
-    crash_pattern = extract_crash_pattern_from_output(config.crash_input)
+    crash_pattern = config.crash_pattern
+    if not crash_pattern:
+        crash_pattern = extract_crash_pattern_from_output(config.crash_input)
     if not crash_pattern:
         return ReductionResult(
             reduced_harness="",
@@ -174,6 +177,7 @@ def process(
     harness_path: str,
     extra_flags: str | None,
     crash_input: str | None,
+    crash_pattern: str | None = None,
     work_dir: str | None = None,
     use_llm: bool = False,
 ) -> str | None:
@@ -181,6 +185,7 @@ def process(
         harness_path=harness_path,
         extra_flags=extra_flags,
         crash_input=crash_input,
+        crash_pattern=crash_pattern,
         work_dir=work_dir,
         use_llm=use_llm,
     )

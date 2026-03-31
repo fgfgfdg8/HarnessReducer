@@ -27,6 +27,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional path to crashing input file fed to the harness binary.",
     )
     parser.add_argument(
+        "--crash-pattern",
+        default=None,
+        help="Optional regex pattern to identify the crash. If not provided, it will be automatically extracted.",
+    )
+    parser.add_argument(
         "--work-dir",
         default=None,
         help="Use a fixed working directory instead of creating a temporary directory.",
@@ -54,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         harness_path=args.harness,
         extra_flags=args.extra_flags,
         crash_input=args.crash_input,
+        crash_pattern=args.crash_pattern,
         work_dir=args.work_dir,
         use_llm=args.llm,
     )

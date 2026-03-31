@@ -4,8 +4,8 @@ import os
 import re
 from dotenv import load_dotenv
 from openai import OpenAI
-load_dotenv("/root/FuzzAgent/sub_modules/HarnessReducer/.env")
 from pathlib import Path
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from harnessreducer.reducer_runner import (
     get_crash_tester_path,
     run_command
