@@ -16,6 +16,7 @@ cargo install treereduce-c
 
 ```bash
 uv sync
+source ./.venv/bin/activate
 ```
 
 3. Ensure `clang++` is available in `PATH`.
@@ -36,7 +37,7 @@ This example intentionally includes:
 ### Build The Example
 
 ```bash
-clang++ -std=c++17 -Iinclude -O0 -g \
+clang++ -std=c++17 -Iinclude -O0 -g -fsanitize=fuzzer,address \
 	examples/fdp_complex_crash_harness.cpp \
 	-o /tmp/fdp_complex_demo.out
 ```

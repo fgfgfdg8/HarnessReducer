@@ -2,3 +2,5 @@
 *.pyc
 output/
 .env
+.lock
+.venv/

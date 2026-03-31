@@ -26,6 +26,7 @@ class TestFdpComplexExample(unittest.TestCase):
             f"-I{self.include_dir}",
             "-O0",
             "-g",
+            "-fsanitize=fuzzer,address",
             str(self.example),
             "-o",
             str(out_bin),
@@ -51,7 +52,7 @@ class TestFdpComplexExample(unittest.TestCase):
         self.assertNotEqual(
             proc.returncode,
             0,
-            msg="expected a crash (non-zero exit) for trigger input",
+            msg=f"expected a crash (non-zero exit) for trigger input.\nStdout:\n{proc.stdout}\nStderr:\n{proc.stderr}",
         )
 
     def test_example_does_not_crash_for_non_trigger(self):
@@ -67,7 +68,7 @@ class TestFdpComplexExample(unittest.TestCase):
         self.assertEqual(
             proc.returncode,
             0,
-            msg=f"expected no crash for non-trigger input, got rc={proc.returncode}",
+            msg=f"expected no crash for non-trigger input, got rc={proc.returncode}.\nStdout:\n{proc.stdout}\nStderr:\n{proc.stderr}",
         )
 
 
