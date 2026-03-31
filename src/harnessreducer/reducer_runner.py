@@ -100,8 +100,10 @@ def check_harness_compilation(harness_path: str, extra_flags: str | None) -> Non
     compile_cmd = [
         "clang++",
         "-fsanitize=address,fuzzer,undefined",
+        "-fno-sanitize=return",  # Prevent false positives from empty function bodies
         "-g",
         "-O0",
+        "-w",
         harness_path,
         "-o",
         output_bin,
@@ -119,13 +121,20 @@ def extract_crash_pattern_from_output(crash_input: str | None) -> str | None:
     if crash_input:
         cmd.append(crash_input)
     env = os.environ.copy()
-    env["UBSAN_OPTIONS"] = "exitcode=77:halt_on_error=1:symbolize=0"
-    env["ASAN_OPTIONS"] = "exitcode=77:symbolize=0"
+    # Enable symbolization during extraction so we get accurate, readable patterns
+    env["UBSAN_OPTIONS"] = "exitcode=77:halt_on_error=1:symbolize=1"
+    env["ASAN_OPTIONS"] = "exitcode=77:symbolize=1"
     proc = run_command(cmd, env=env, error_prefix="Failed to execute harness for crash pattern extraction", ignore_errors=True)
     output = proc.stdout + "\n" + proc.stderr
     if proc.returncode != 77:
         print("[!] Warning: No crash detected when running the harness. Output:\n" + output)
         return None
+
+    print("[*] Full crash output for pattern extraction:")
+    # Print a truncated version so the user can see what the tool found
+    for line in output.splitlines():
+        if any(kw in line for kw in ["runtime error", "ERROR:", "SUMMARY:", "Assertion", "SEGV", "heap-", "stack-"]):
+            print(f"    {line.strip()}")
 
     asan_match = ASAN_PATTERN.search(output)
     if asan_match:
@@ -174,8 +183,10 @@ def compile_dump_mode_harness(harness_path: str, extra_flags: str | None) -> str
         "-DFDP_MIN_MODE_DUMP",
         f"-I{get_fdp_header_dir()}",
         "-fsanitize=address,fuzzer,undefined",
+        "-fno-sanitize=return",  # Prevent false positives from empty function bodies
         "-g",
         "-O0",
+        "-w",
         harness_path,
         "-o",
         tagged_harness_bin,
@@ -253,3 +264,41 @@ def format_reduced_harness(reduced_harness_path: str) -> None:
         ["clang-format", "-i", "--style=LLVM", reduced_harness_path],
         "Failed to format reduced harness with clang-format",
     )
+
+
+# Regex to find non-void function declarations followed by an empty body `{}`.
+# Matches: int foo(...) {} or static size_t bar(...) {}
+_EMPTY_RETURN_BODY = re.compile(
+    r"((?:static\s+)?(?:int|unsigned|size_t|ssize_t|long|short|uint\d+_t|int\d+_t|vpx_codec_err_t)\s+\w+\s*\([^)]*\)\s*)\{\s*\}",
+    re.MULTILINE,
+)
+
+
+def fix_empty_return_functions(harness_path: str) -> None:
+    """Insert ``return 0;`` into empty function bodies that declare a
+    non-void return type.  The tree-reducer often deletes function bodies
+    entirely, leaving ``int foo() {}``, which triggers UBSan's
+    ``-fsanitize=return`` check at runtime.
+
+    Also ensures LLVMFuzzerTestOneInput ends with ``return 0;``."""
+    content = Path(harness_path).read_text(encoding="utf-8", errors="ignore")
+    new_content, count = _EMPTY_RETURN_BODY.subn(r"\1{ return 0; }", content)
+
+    # Ensure LLVMFuzzerTestOneInput has a return 0; before the final closing brace.
+    # The tree-reducer often strips return statements from the main entry point.
+    if "LLVMFuzzerTestOneInput" in new_content and "return 0;" not in new_content.split("LLVMFuzzerTestOneInput", 1)[1]:
+        # Find the last '}' in the file (end of LLVMFuzzerTestOneInput)
+        last_brace = new_content.rfind("}")
+        if last_brace > 0:
+            # Insert return 0; before the last '}'
+            # But check if there's a try/catch — add return 0; before the catch-all closing brace
+            try_catch_end = new_content.rfind("} catch")
+            if try_catch_end > 0:
+                new_content = new_content[:try_catch_end] + "  return 0;\n" + new_content[try_catch_end:]
+            else:
+                new_content = new_content[:last_brace] + "  return 0;\n" + new_content[last_brace:]
+            count += 1
+
+    if count:
+        Path(harness_path).write_text(new_content, encoding="utf-8")
+        print(f"[+] Fixed {count} empty/missing-return function body(ies) in {harness_path}")

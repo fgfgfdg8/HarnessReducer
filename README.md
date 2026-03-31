@@ -126,7 +126,7 @@ harnessreducer /mnt/raid/FuzzAgentExp/libvpx/libvpx_exp_24h_1/crash_reports/cras
 
 HarnessReducer supports an optional semantic reduction pass using a Large Language Model (LLM) after structural reduction is completed and FDP calls are inlined. This pass aims to further simplify logic, perform constant folding, and remove redundancies that structural tools might miss.
 
-To use this feature, add the `--llm` flag to your command and ensure the following environment variables are set (either in your shell or in a `.env` file at the project root):
+To use this feature, add the `--llm` flag to your command. The required dependencies (`openai` and `python-dotenv`) are automatically compiled and installed via `uv sync` from the `pyproject.toml` definition. You just need to ensure the following environment variables are set (either explicitly in your shell or by creating a `.env` file at the project root):
 
 - **`OPENAI_API_KEY`**: Your API key.
 - **`OPENAI_BASE_URL`**: The API base URL (e.g., `https://api.openai.com/v1`).

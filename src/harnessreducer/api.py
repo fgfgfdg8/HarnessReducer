@@ -14,6 +14,7 @@ from harnessreducer.reducer_runner import (
     compile_dump_mode_harness,
     configure_work_dir,
     dump_fdp_trace,
+    fix_empty_return_functions,
     format_reduced_harness,
     get_work_dir,
     run_treereducer,
@@ -144,6 +145,7 @@ def reduce_with_config(config: ReductionConfig) -> ReductionResult:
         config.crash_input,
     )
     format_reduced_harness(reduced_harness)
+    fix_empty_return_functions(reduced_harness)
     post_inline_harness = inline_literals_in_reduced_harness(
         reduced_harness,
         fdp_trace_file,

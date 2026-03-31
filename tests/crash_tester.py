@@ -10,6 +10,14 @@ from pathlib import Path
 __script_dir__ = os.path.dirname(os.path.realpath(__file__))
 __project_root__ = Path(__script_dir__).parent
 
+# Patterns for crashes introduced by tree-reducer deletions (not real bugs).
+# These are "false positive" crashes that appear when code is structurally
+# broken by the reducer, not because the original bug is preserved.
+FALSE_POSITIVE_PATTERNS = [
+    re.compile(r"execution reached the end of a value-returning function without returning a value"),
+    re.compile(r"execution reached an unreachable program point"),
+]
+
 
 def get_project_root():
     return __project_root__
@@ -37,8 +45,10 @@ def main() -> int:
             f"-I{get_fdp_header_dir()}" if args.fdp_trace else "",
             "-DFDP_MIN_MODE_REPLAY" if args.fdp_trace else "",
             "-fsanitize=address,fuzzer,undefined",
+            "-fno-sanitize=return",   # Prevent false positives from empty function bodies
             "-g",
             "-O0",
+            "-w",                     # Suppress warnings (including -Wreturn-type)
             args.source,
             "-o",
             output_path
@@ -77,6 +87,13 @@ def main() -> int:
         status = run_proc.returncode
 
         run_log = run_proc.stdout + run_proc.stderr
+
+        # Reject false-positive crashes introduced by tree-reducer deletions
+        # (e.g., empty function bodies that UBSan catches as missing-return).
+        for fp in FALSE_POSITIVE_PATTERNS:
+            if fp.search(run_log):
+                print(f"Rejected false-positive crash: {fp.pattern}", file=sys.stderr)
+                return 1
 
         # Some libFuzzer/ASAN crash paths print fatal markers but still exit 0.
         if status == 77 and run_log.find(args.crash_pattern) != -1:
