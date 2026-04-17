@@ -38,6 +38,14 @@ UBSAN_PATTERN = re.compile(
 ASSERTION_PATTERN = re.compile(r"Assertion `.*' failed\.")
 LIBFUZZER_PATTERN = re.compile(r"SUMMARY: libFuzzer: deadly signal")
 
+
+def resolve_tree_reducer_binary() -> str:
+    for candidate in ("treereduce-cpp", "treereduce-c"):
+        binary = shutil.which(candidate)
+        if binary:
+            return binary
+    raise FileNotFoundError("treereduce-cpp or treereduce-c is not available in PATH")
+
 def get_project_root() -> Path:
     return PROJECT_ROOT
 
@@ -87,11 +95,12 @@ def run_command(cmd: list[str], error_prefix: str, env: dict[str, str] | None = 
 
 def check_tree_reducer() -> None:
     print("[+] Checking for tree-reducer availability...")
+    reducer_bin = resolve_tree_reducer_binary()
     run_command(
-        ["treereduce-c", "--help"],
+        [reducer_bin, "--help"],
         "tree-reducer is not available. Please ensure it is installed and in your PATH",
     )
-    print("[+] tree-reducer is available.")
+    print(f"[+] tree-reducer is available: {reducer_bin}")
 
 def check_harness_compilation(harness_path: str, extra_flags: str | None) -> None:
     print("[+] Checking harness compilation...")
@@ -213,14 +222,14 @@ def dump_fdp_trace(harness_bin: str, crash_input: str | None) -> str:
 
 def run_treereducer(
     harness_path: str,
-    fdp_trace_file: str,
+    fdp_trace_file: str | None,
     crash_pattern: str,
     extra_args: str | None,
     crash_input: str | None,
 ) -> str:
     reduced_harness = os.path.join(get_work_dir(), "reduced_harness.cpp")
     cmd = [
-        "treereduce-c",
+        resolve_tree_reducer_binary(),
         "-j",
         "60",
         "-s",
@@ -241,8 +250,9 @@ def run_treereducer(
         crash_pattern,
         "--crash-input", crash_input or "",
         "--extra-flags", extra_args or "",
-        "--fdp-trace", fdp_trace_file,
     ]
+    if fdp_trace_file:
+        cmd.extend(["--fdp-trace", fdp_trace_file])
 
     proc = subprocess.run(
         cmd,

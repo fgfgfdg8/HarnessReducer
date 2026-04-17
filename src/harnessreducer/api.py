@@ -51,14 +51,14 @@ class ReductionResult:
     success: bool = True
 
 
-def tag_harness_with_fdp_ids(harness_path: str, start_id: int, marker: str) -> str:
+def tag_harness_with_fdp_ids(harness_path: str, start_id: int, marker: str) -> tuple[str, int]:
     source = Path(harness_path).read_text(encoding="utf-8")
     transformed, count = inject_ids(source, start_id, marker)
 
     tagged_harness_file = str(Path(get_work_dir()) / Path(harness_path).name)
     Path(tagged_harness_file).write_text(transformed, encoding="utf-8")
     print(f"Injected {count} FDP callsite IDs into {tagged_harness_file}")
-    return tagged_harness_file
+    return tagged_harness_file, count
 
 
 def _prepend_additional_headers(harness_path: str) -> None:
@@ -130,30 +130,40 @@ def reduce_with_config(config: ReductionConfig) -> ReductionResult:
 
     print(f"[+] Extracted crash pattern: {crash_pattern}")
     check_reducer_crash_pattern(config.harness_path, crash_pattern, config.crash_input, config.extra_flags)
-    tagged_harness_file = tag_harness_with_fdp_ids(
+    tagged_harness_file, injected_count = tag_harness_with_fdp_ids(
         config.harness_path,
         start_id=config.start_id,
         marker=config.marker,
     )
-    tagged_harness_bin = compile_dump_mode_harness(tagged_harness_file, config.extra_flags)
-    fdp_trace_file = dump_fdp_trace(tagged_harness_bin, config.crash_input)
+
+    fdp_trace_file = ""
+    if injected_count > 0:
+        tagged_harness_bin = compile_dump_mode_harness(tagged_harness_file, config.extra_flags)
+        fdp_trace_file = dump_fdp_trace(tagged_harness_bin, config.crash_input)
+    else:
+        print("[+] No FDP callsites found; falling back to non-FDP reduction mode.")
+
     reduced_harness = run_treereducer(
         tagged_harness_file,
-        fdp_trace_file,
+        fdp_trace_file or None,
         crash_pattern,
         config.extra_flags,
         config.crash_input,
     )
     format_reduced_harness(reduced_harness)
     fix_empty_return_functions(reduced_harness)
-    post_inline_harness = inline_literals_in_reduced_harness(
-        reduced_harness,
-        fdp_trace_file,
-        crash_pattern,
-        config.crash_input,
-        config.extra_flags,
-        config.start_id,
-    )
+
+    if fdp_trace_file:
+        post_inline_harness = inline_literals_in_reduced_harness(
+            reduced_harness,
+            fdp_trace_file,
+            crash_pattern,
+            config.crash_input,
+            config.extra_flags,
+            config.start_id,
+        )
+    else:
+        post_inline_harness = reduced_harness
 
     if config.use_llm:
         from harnessreducer.llm_reducer import apply_llm_reduction

@@ -6,10 +6,12 @@ with first-class support for `FuzzedDataProvider` (FDP).
 
 ## Install
 
-1. Install `tree-reducer-c`:
+1. Install a tree reducer binary. HarnessReducer will prefer `treereduce-cpp` when present and fall back to `treereduce-c`:
 
 ```bash
 cargo install treereduce-c
+# optional, if your environment provides it
+# cargo install treereduce-cpp
 ```
 
 2. Use a Python 3.12+ environment and install project dependencies:
@@ -65,12 +67,13 @@ harnessreducer <harness.cpp> [--extra-flags "..."] [--crash-input seed.bin] [--c
 
 ### Argument Descriptions
 
-- **`harness`** (positional): Path to the original C++ harness source file to be reduced.
+- **`harness`** (positional): Path to the original harness source file to be reduced. The reducer accepts `.c`, `.cc`, and `.cpp` inputs and keeps the command-line/API unchanged.
 - **`--extra-flags`**: Additional compiler flags (e.g., `-I`, `-L`, `-l`, `-std=c++17`). These are appended to the base compilation command used for crash verification:
   ```bash
   clang++ -fsanitize=address,fuzzer,undefined -g -O0 <harness> -o <output> [EXTRA_FLAGS]
   ```
   _Note: During reduction, the tool automatically adds `-I<project_root>/include` and `-DFDP_MIN_MODE_REPLAY` if FDP tracing is enabled._
+  _Note: If `treereduce-cpp` is installed, it will be used automatically for C++ harnesses; otherwise HarnessReducer falls back to `treereduce-c`._
 - **`--crash-input`**: Path to the binary input file (seed) that triggers the crash.
 - **`--crash-pattern`**: A regex used to identify the target crash. If not provided, it is automatically extracted from the first execution (e.g., specific ASan/UBSan signatures or assertion messages).
 - **`--work-dir`**: Specified directory for intermediate files (tagged source, tracing logs, build artifacts). If not set, a temporary directory is used.
