@@ -33,7 +33,7 @@ LEAK_PATTERN = re.compile(
     r"SUMMARY: AddressSanitizer: \d+ byte\(s\) leaked in \d+ allocation\(s\)\."
 )
 UBSAN_PATTERN = re.compile(
-    r"runtime error:\s.*"
+    r"SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior\s+(\S+:\d+:\d+)"
 )
 ASSERTION_PATTERN = re.compile(r"Assertion `.*' failed\.")
 LIBFUZZER_PATTERN = re.compile(r"SUMMARY: libFuzzer: deadly signal")
@@ -155,7 +155,7 @@ def extract_crash_pattern_from_output(crash_input: str | None) -> str | None:
 
     ubsan_match = UBSAN_PATTERN.search(output)
     if ubsan_match:
-        return ubsan_match.group(0)
+        return ubsan_match.group(1)
 
     assertion_match = ASSERTION_PATTERN.search(output)
     if assertion_match:
