@@ -35,16 +35,12 @@ LEAK_PATTERN = re.compile(
 UBSAN_PATTERN = re.compile(
     r"SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior\s+(\S+:\d+:\d+)"
 )
-ASSERTION_PATTERN = re.compile(r"Assertion `.*' failed\.")
-LIBFUZZER_PATTERN = re.compile(r"SUMMARY: libFuzzer: deadly signal")
 
+# Captures source location as file:line from abort/assert lines.
+# Example line:
+# poc.out: /root/src/libaom/av1/encoder/intra_mode_search.c:358: ... Assertion `...` failed.
+ABORT_ASSERT_LOCATION_PATTERN = re.compile(r"((?:/[^\s:]+)+:\d+)")
 
-def resolve_tree_reducer_binary() -> str:
-    for candidate in ("treereduce-cpp", "treereduce-c"):
-        binary = shutil.which(candidate)
-        if binary:
-            return binary
-    raise FileNotFoundError("treereduce-cpp or treereduce-c is not available in PATH")
 
 def get_project_root() -> Path:
     return PROJECT_ROOT
@@ -157,13 +153,11 @@ def extract_crash_pattern_from_output(crash_input: str | None) -> str | None:
     if ubsan_match:
         return ubsan_match.group(1)
 
-    assertion_match = ASSERTION_PATTERN.search(output)
-    if assertion_match:
-        return assertion_match.group(0)
-
-    libfuzzer_match = LIBFUZZER_PATTERN.search(output)
-    if libfuzzer_match:
-        return libfuzzer_match.group(0)
+    for line in output.splitlines():
+        if "Assertion" in line and "failed." in line:
+            abort_assert_match = ABORT_ASSERT_LOCATION_PATTERN.search(line)
+            if abort_assert_match:
+                return abort_assert_match.group(1)
 
     raise ValueError("Failed to extract a valid crash pattern from the harness output. Output:\n" + output)
 
