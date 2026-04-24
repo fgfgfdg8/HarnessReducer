@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Optional output path. If omitted, keeps result in reducer temp dir.",
     )
+    parser.add_argument(
+        "--stable",
+        action="store_true",
+        help="Use stable reduction mode (no randomization, deterministic output).",
+    )
     return parser
 
 
@@ -62,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         crash_pattern=args.crash_pattern,
         work_dir=args.work_dir,
         use_llm=args.llm,
+        stable=args.stable,
     )
     result = reduce_with_config(config)
     if not result.success:

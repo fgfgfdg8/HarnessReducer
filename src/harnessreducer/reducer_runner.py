@@ -226,6 +226,7 @@ def run_treereducer(
     crash_pattern: str,
     extra_args: str | None,
     crash_input: str | None,
+    stable: bool = False,
 ) -> str:
     reduced_harness = os.path.join(get_work_dir(), "reduced_harness.cpp")
     cmd = [
@@ -236,10 +237,14 @@ def run_treereducer(
         harness_path,
         "-o",
         reduced_harness,
-        #"--stable",
-        #"--min-reduction",
-        #"1",
-        "--fast",
+    ]
+    if stable:
+        cmd.append("--stable")
+        cmd.append("--min-reduction")
+        cmd.append("1")
+    else:
+        cmd.append("--fast")
+    cmd.extend([
         "--timeout",
         "300",
         "--interesting-exit-code",
@@ -250,9 +255,8 @@ def run_treereducer(
         crash_pattern,
         "--crash-input", crash_input or "",
         "--extra-flags", extra_args or "",
-    ]
-    if fdp_trace_file:
-        cmd.extend(["--fdp-trace", fdp_trace_file])
+        "--fdp-trace", fdp_trace_file,
+    ])
 
     proc = subprocess.run(
         cmd,

@@ -41,6 +41,7 @@ class ReductionConfig:
     start_id: int = 100000
     marker: str = "FDP_ID"
     use_llm: bool = False
+    stable: bool = False
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,7 @@ def reduce_with_config(config: ReductionConfig) -> ReductionResult:
         crash_pattern,
         config.extra_flags,
         config.crash_input,
+        stable=config.stable,
     )
     format_reduced_harness(reduced_harness)
     fix_empty_return_functions(reduced_harness)
